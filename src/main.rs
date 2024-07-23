@@ -13,12 +13,19 @@ use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl,
-    peripherals::Peripherals,
-    prelude::*,
-    system::SystemControl,
-    timer::{timg::TimerGroup, ErasedTimer, OneShotTimer},
+    clock::ClockControl, peripherals::Peripherals, prelude::*, rng::Rng, system::SystemControl, timer::{timg::TimerGroup, ErasedTimer, OneShotTimer, PeriodicTimer}
 };
+use esp_println::println;
+use esp_wifi::{initialize, EspWifiInitFor};
+
+/// Module containing interface types for communicating with controller (via esp-now) and the computer (via serial)
+mod esda_interface;
+
+/// Module containing espnow transmit task
+mod esda_wireless;
+
+/// Module containing code to handle inputs from joysticks, buttons etc
+mod esda_controls;
 
 // When you are okay with using a nightly compiler it's better to use https://docs.rs/static_cell/2.1.0/static_cell/macro.make_static.html
 macro_rules! mk_static {
@@ -42,7 +49,8 @@ async fn run() {
 async fn main(spawner: Spawner) {
     esp_println::logger::init_logger_from_env();
 
-    esp_println::println!("Init!");
+    println!("Beginning Asterius Firmware Initialisation...");
+    println!("Initialising Runtime...");
     let peripherals = Peripherals::take();
     let system = SystemControl::new(peripherals.SYSTEM);
     let clocks = ClockControl::boot_defaults(system.clock_control).freeze();
@@ -53,10 +61,29 @@ async fn main(spawner: Spawner) {
     let timers = mk_static!([OneShotTimer<ErasedTimer>; 1], timers);
     esp_hal_embassy::init(&clocks, timers);
 
-    spawner.spawn(run()).ok();
+    println!("Starting esp-now Initialisation");
+    let timer = PeriodicTimer::new(
+        esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG1, &clocks, None)
+            .timer1
+            .into(),
+    );
 
+    let init = initialize(
+        EspWifiInitFor::Wifi,
+        timer,
+        Rng::new(peripherals.RNG),
+        peripherals.RADIO_CLK,
+        &clocks,
+    )
+    .unwrap();
+
+    let wifi = peripherals.WIFI;
+    let mut esp_now = esp_wifi::esp_now::EspNow::new(&init, wifi).unwrap();
+
+    spawner.spawn(esda_wireless::wireless_transmitter(esp_now));
+
+    // Occupy the main thread to avoid tripping the watchdog
     loop {
-        esp_println::println!("Bing!");
         Timer::after(Duration::from_millis(5_000)).await;
     }
 }
