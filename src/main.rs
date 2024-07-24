@@ -13,7 +13,17 @@ use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl, peripherals::Peripherals, prelude::*, rng::Rng, system::SystemControl, timer::{timg::TimerGroup, ErasedTimer, OneShotTimer, PeriodicTimer}
+    analog::adc::{Adc, AdcConfig, Attenuation},
+    clock::ClockControl,
+    gpio::{Event, GpioPin, Input, Io, Pull},
+    mcpwm::{operator::PwmPinConfig, timer::PwmWorkingMode, McPwm, PeripheralClockConfig},
+    peripherals::Peripherals,
+    prelude::*,
+    rng::Rng,
+    system::SystemControl,
+    timer::{timg::TimerGroup, ErasedTimer, OneShotTimer, PeriodicTimer},
+    uart::{self, config::AtCmdConfig},
+    
 };
 use esp_println::println;
 use esp_wifi::{initialize, EspWifiInitFor};
@@ -79,8 +89,28 @@ async fn main(spawner: Spawner) {
 
     let wifi = peripherals.WIFI;
     let mut esp_now = esp_wifi::esp_now::EspNow::new(&init, wifi).unwrap();
+    let mut io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
 
+    
+
+    // Initialise analog read pins
+    let read_y_in: GpioPin<35> = io.pins.gpio35; // y-axis
+    let read_x_in: GpioPin<34> = io.pins.gpio34; // x-axis
+
+    let mut adc1_config = AdcConfig::new();
+    let mut adc1_pin = adc1_config.enable_pin(read_y_in, Attenuation::Attenuation11dB);
+    let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
+
+    let mut adc2_config = AdcConfig::new();
+    let mut adc2_pin = adc2_config.enable_pin(read_x_in, Attenuation::Attenuation11dB);
+    let mut adc2: Adc<esp_hal::peripherals::ADC2> = Adc::new(peripherals.ADC2, adc2_config);
+
+    // starts wireless_transmitter 
     spawner.spawn(esda_wireless::wireless_transmitter(esp_now));
+
+
+    // starts controls for reading analog values
+    // spawner.spawn(esda_controls::joystick_x_listener());
 
     // Occupy the main thread to avoid tripping the watchdog
     loop {
