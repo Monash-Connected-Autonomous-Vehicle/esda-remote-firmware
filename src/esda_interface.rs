@@ -25,6 +25,14 @@ pub struct ESDAMessage {
     pub data: f32,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct EsdaControllerStruct {
+    pub x_value_pack: u8,
+    pub y_value_pack: u8,
+    pub button_state: u8,
+    pub tog_switch_val: u8,
+}
+
 impl ESDAMessage {
     /// Converts a slice of little endian bytes to an ESDAMessage
     pub fn from_le_bytes(bytes: &[u8]) -> Result<Self, &[u8]> {
@@ -134,5 +142,29 @@ impl ESDAMessage {
         byte_form[4..7].copy_from_slice(&value_quartet);
 
         byte_form
+    }
+}
+
+// implement serialization methods
+impl EsdaControllerStruct {
+    pub fn to_bytes(&self) -> [u8; 4] { // return byte array of 4 ( a byte is uint8)
+        [self.x_value_pack, self.y_value_pack, self.button_state, self.tog_switch_val]
+    }
+
+    pub fn from_bytes(bytes: [u8; 4]) -> Self { // returns an  EsdaControllerStruct
+        EsdaControllerStruct {
+            x_value_pack: bytes[0],
+            y_value_pack: bytes[1],
+            button_state: bytes[2],
+            tog_switch_val: bytes[3],
+        }
+    }
+
+    pub fn set_button_state(&mut self, state: u8) {
+        self.button_state = state;
+    }
+
+    pub fn set_tog_switch_val(&mut self, value: u8) {
+        self.tog_switch_val = value;
     }
 }

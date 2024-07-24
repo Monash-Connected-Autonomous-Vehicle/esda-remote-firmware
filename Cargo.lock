@@ -399,6 +399,7 @@ dependencies = [
  "heapless",
  "log",
  "smoltcp",
+ "spin",
  "static_cell",
 ]
 

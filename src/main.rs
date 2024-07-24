@@ -27,6 +27,7 @@ mod esda_wireless;
 /// Module containing code to handle inputs from joysticks, buttons etc
 mod esda_controls;
 
+
 // When you are okay with using a nightly compiler it's better to use https://docs.rs/static_cell/2.1.0/static_cell/macro.make_static.html
 macro_rules! mk_static {
     ($t:ty,$val:expr) => {{
@@ -80,7 +81,9 @@ async fn main(spawner: Spawner) {
     let wifi = peripherals.WIFI;
     let mut esp_now = esp_wifi::esp_now::EspNow::new(&init, wifi).unwrap();
 
-    spawner.spawn(esda_wireless::wireless_transmitter(esp_now));
+    spawner.spawn(esda_wireless::wireless_transmitter(esp_now)).unwrap(); 
+
+    spawner.spawn(esda_controls::update_controller_state()).unwrap();
 
     // Occupy the main thread to avoid tripping the watchdog
     loop {
