@@ -13,7 +13,13 @@ use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::{
-    clock::ClockControl, peripherals::Peripherals, prelude::*, rng::Rng, system::SystemControl, timer::{timg::TimerGroup, ErasedTimer, OneShotTimer, PeriodicTimer}
+    clock::ClockControl, 
+    peripherals::Peripherals,
+    prelude::*, 
+    rng::Rng, 
+    system::SystemControl, 
+    timer::{timg::TimerGroup, ErasedTimer, OneShotTimer, PeriodicTimer},
+    gpio::{GpioPin, Io},
 };
 use esp_println::println;
 use esp_wifi::{initialize, EspWifiInitFor};
@@ -55,6 +61,11 @@ async fn main(spawner: Spawner) {
     let peripherals = Peripherals::take();
     let system = SystemControl::new(peripherals.SYSTEM);
     let clocks = ClockControl::boot_defaults(system.clock_control).freeze();
+
+    let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
+    // Initialise analog read pins
+    let read_y_in: GpioPin<35> = io.pins.gpio35; // y-axis
+    let read_x_in: GpioPin<34> = io.pins.gpio34; // x-axis
 
     let timg0 = TimerGroup::new(peripherals.TIMG0, &clocks, None);
     let timer0 = OneShotTimer::new(timg0.timer0.into());

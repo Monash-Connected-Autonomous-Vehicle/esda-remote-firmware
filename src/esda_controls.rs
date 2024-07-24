@@ -1,6 +1,9 @@
 use embassy_executor::task;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex, signal::Signal};
 use embassy_time::{Duration, Timer};
+use esp_hal::{
+    analog::adc::{Adc, AdcConfig, Attenuation}, clock::ClockControl, delay::Delay, gpio::{GpioPin, Io}, peripherals::{self, Peripherals}, prelude::*, rng::Rng, system::SystemControl, timer::PeriodicTimer
+};
 
 use crate::esda_interface::EsdaControllerStruct;
 
@@ -17,10 +20,15 @@ pub static CONTROLLER_SIGNAL: Signal<CriticalSectionRawMutex, ()> = Signal::new(
 
 #[task]
 pub async fn update_controller_state() {
+    
+    
+
     loop {
         // replace with actual reading
+        
         let new_button_state: u8 = 1;
         let new_tog_switch_val: u8 = 1;
+
 
         // lock mutex (CONTROLLER_STATE) and update
         {
