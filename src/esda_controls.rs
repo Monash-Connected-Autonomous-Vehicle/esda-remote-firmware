@@ -2,7 +2,7 @@ use embassy_executor::task;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex, signal::Signal};
 use embassy_time::{Duration, Timer};
 use esp_hal::{
-    analog::adc::{Adc, AdcConfig, Attenuation}, clock::ClockControl, delay::Delay, gpio::{GpioPin, Io}, peripherals::{self, Peripherals}, prelude::*, rng::Rng, system::SystemControl, timer::PeriodicTimer
+    analog::adc::{Adc, AdcConfig, AdcPin, Attenuation}, clock::ClockControl, delay::Delay, gpio::{GpioPin, Io}, peripherals::{self, Peripherals, ADC1}, prelude::*, rng::Rng, system::SystemControl, timer::PeriodicTimer
 };
 
 use crate::esda_interface::EsdaControllerStruct;
@@ -18,8 +18,11 @@ static CONTROLLER_STATE: Mutex<CriticalSectionRawMutex, EsdaControllerStruct> = 
 // define a static signal to notify wireless transmission task
 pub static CONTROLLER_SIGNAL: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 
+
+
 #[task]
-pub async fn update_controller_state() {
+pub async fn update_controller_state(update_controller_state: &'static AtomicF32, mut pin: AdcPin<'static, impl Input>) {
+    // let pin = adc_pin.pin;
     
     
 

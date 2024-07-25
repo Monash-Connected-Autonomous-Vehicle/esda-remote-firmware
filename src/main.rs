@@ -13,6 +13,7 @@ use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::{
+    analog::adc::{Adc, AdcConfig, Attenuation},
     clock::ClockControl, 
     peripherals::Peripherals,
     prelude::*, 
@@ -20,6 +21,7 @@ use esp_hal::{
     system::SystemControl, 
     timer::{timg::TimerGroup, ErasedTimer, OneShotTimer, PeriodicTimer},
     gpio::{GpioPin, Io},
+    delay::Delay,
 };
 use esp_println::println;
 use esp_wifi::{initialize, EspWifiInitFor};
@@ -66,6 +68,15 @@ async fn main(spawner: Spawner) {
     // Initialise analog read pins
     let read_y_in: GpioPin<35> = io.pins.gpio35; // y-axis
     let read_x_in: GpioPin<34> = io.pins.gpio34; // x-axis
+
+    // Create ADC instances
+    let mut adc1_config = AdcConfig::new();
+    let mut adc1_pin = adc1_config.enable_pin(read_y_in, Attenuation::Attenuation11dB);
+    let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
+    let mut adc2_config = AdcConfig::new();
+    let mut adc2_pin = adc2_config.enable_pin(read_x_in, Attenuation::Attenuation11dB);
+    let mut adc2 = Adc::new(peripherals.ADC2, adc2_config);
+    let delay = Delay::new(&clocks);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0, &clocks, None);
     let timer0 = OneShotTimer::new(timg0.timer0.into());
