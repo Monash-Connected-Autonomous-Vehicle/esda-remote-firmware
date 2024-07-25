@@ -13,7 +13,9 @@ use crate::esda_controls::{get_controller_state, CONTROLLER_SIGNAL};
 
 #[task]
 pub async fn wireless_transmitter(
-    mut esp_now: EspNow<'static>) {
+    mut esp_now: EspNow<'static>,
+    controller_transmit_signal: &'static Signal<NoopRawMutex, (f32, f32)>, // Might need to change this
+) {
     loop {
         // Either loop with a timer and send all the data or add channels (not signals) to the parameters which are fired by other tasks when they detect changes to the controls
         // I like the second option better :)

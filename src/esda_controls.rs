@@ -1,4 +1,4 @@
-use core::sync::atomic::AtomicU32;
+use core::{pin, sync::atomic::AtomicU32};
 
 use embassy_executor::task;
 use embassy_sync::{blocking_mutex::{raw::CriticalSectionRawMutex, NoopMutex}, mutex::Mutex, signal::Signal};
@@ -21,26 +21,41 @@ static CONTROLLER_STATE: Mutex<CriticalSectionRawMutex, EsdaControllerStruct> = 
 // define a static signal to notify wireless transmission task
 pub static CONTROLLER_SIGNAL: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 
+const X_PIN: u8 = 34;
+const Y_PIN: u8 = 35;
+
 #[task]
 pub async fn update_controller_state(
-    mut adc1: Adc<'static, impl AdcExtension>),
-    // mut pin_x: AdcPin<impl embedded_hal_02::adc::Channel<ADCI, ID = u8>, )>
+    mut adc_x: Adc<'static, esp_hal::peripherals::ADC1>,
+    mut adc_pin_x: AdcPin<GpioPin<X_PIN>, esp_hal::peripherals::ADC1>,
+    mut adc_y: Adc<'static, esp_hal::peripherals::ADC2>,
+    mut adc_pin_y: AdcPin<GpioPin<Y_PIN>, esp_hal::peripherals::ADC2>,
+)   
 {
-    let mut pin_value_y: u16 = nb::block(adc1.read_oneshot(&mut adc1_pin)).unwrap();
-
+    // let mut adc_value_x: u16 = nb::block!(adc_x.read_oneshot(&mut adc_pin_x)).unwrap();
+    // let mut pin_value_y: u16 = nb::block!(adc_y.read_oneshot(&mut adc_pin_y)).unwrap();
 
     loop {
         // replace with actual reading
         
         let new_button_state: u8 = 1;
         let new_tog_switch_val: u8 = 1;
+        
 
 
         // lock mutex (CONTROLLER_STATE) and update
-        {
+        {   
+            // Constantly reads the 
+            let mut adc_value_x: u16 = nb::block!(adc_x.read_oneshot(&mut adc_pin_x)).unwrap();
+            let mut pin_value_x: f32 = adc_value_x as f32;
+            let mut adc_value_y: u16 = nb::block!(adc_y.read_oneshot(&mut adc_pin_y)).unwrap();
+            let mut pin_value_y: f32 = adc_value_y as f32;
             let mut state: MutexGuard<CriticalSectionRawMutex, EsdaControllerStruct> = CONTROLLER_STATE.lock().await;
             let mut changed = false;
+            
+            // if state.x_value_pack = != pin_value_x{
 
+            // }
             if state.button_state != new_button_state {
                 state.set_button_state(new_button_state);
                 changed = true;

@@ -72,12 +72,13 @@ async fn main(spawner: Spawner) {
     let read_x_in: GpioPin<34> = io.pins.gpio34; // x-axis
 
     // Create ADC instances
-    let mut adc1_config = AdcConfig::new();
-    let mut adc1_pin = adc1_config.enable_pin(read_y_in, Attenuation::Attenuation11dB);
-    let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
-    let mut adc2_config = AdcConfig::new();
-    let mut adc2_pin = adc2_config.enable_pin(read_x_in, Attenuation::Attenuation11dB);
-    let mut adc2 = Adc::new(peripherals.ADC2, adc2_config);
+    let mut adc_config_x = AdcConfig::new();
+    let mut adc_pin_x = adc_config_x.enable_pin(read_x_in, Attenuation::Attenuation11dB);
+    let mut adc_x = Adc::new(peripherals.ADC1, adc_config_x);
+    let mut adc_config_y = AdcConfig::new();
+    let mut adc_pin_y = adc_config_y.enable_pin(read_y_in, Attenuation::Attenuation11dB);
+    let mut adc_y = Adc::new(peripherals.ADC2, adc_config_y);
+   
     let delay = Delay::new(&clocks);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0, &clocks, None);
@@ -105,9 +106,15 @@ async fn main(spawner: Spawner) {
     let wifi = peripherals.WIFI;
     let mut esp_now = esp_wifi::esp_now::EspNow::new(&init, wifi).unwrap();
 
+
+    // Task to update the x and y values
+    spawner.spawn(esda_controls::update_controller_state(adc_x, adc_pin_x,adc_y, adc_pin_y)).unwrap();
+
+
+    // Task to transmit the ESDA messages
     spawner.spawn(esda_wireless::wireless_transmitter(esp_now)).unwrap(); 
 
-    spawner.spawn(esda_controls::update_controller_state()).unwrap();
+    
 
     // Occupy the main thread to avoid tripping the watchdog
     loop {
