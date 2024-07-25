@@ -1,11 +1,14 @@
+use core::sync::atomic::AtomicU32;
+
 use embassy_executor::task;
-use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex, signal::Signal};
+use embassy_sync::{blocking_mutex::{raw::CriticalSectionRawMutex, NoopMutex}, mutex::Mutex, signal::Signal};
 use embassy_time::{Duration, Timer};
 use esp_hal::{
-    analog::adc::{Adc, AdcConfig, AdcPin, Attenuation}, clock::ClockControl, delay::Delay, gpio::{GpioPin, Io}, peripherals::{self, Peripherals, ADC1}, prelude::*, rng::Rng, system::SystemControl, timer::PeriodicTimer
+    analog::adc::{Adc, AdcConfig, AdcPin, Attenuation}, clock::ClockControl, delay::Delay, gpio::{GpioPin, Io}, i2s::RegisterAccess, peripherals::{self, Peripherals, ADC1, ADC2}, prelude::*, rng::Rng, system::SystemControl, timer::PeriodicTimer
 };
-
-use crate::esda_interface::EsdaControllerStruct;
+use embassy_sync::mutex::MutexGuard;
+use crate::{peripheral_extensions::AdcExtension, esda_interface::EsdaControllerStruct};
+use esp_hal::gpio::InputPin;
 
 // protect access to EsdaControllerStruct
 static CONTROLLER_STATE: Mutex<CriticalSectionRawMutex, EsdaControllerStruct> = Mutex::new(EsdaControllerStruct {
@@ -18,13 +21,13 @@ static CONTROLLER_STATE: Mutex<CriticalSectionRawMutex, EsdaControllerStruct> = 
 // define a static signal to notify wireless transmission task
 pub static CONTROLLER_SIGNAL: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 
-
-
 #[task]
-pub async fn update_controller_state(update_controller_state: &'static AtomicF32, mut pin: AdcPin<'static, impl Input>) {
-    // let pin = adc_pin.pin;
-    
-    
+pub async fn update_controller_state(
+    mut adc1: Adc<'static, impl AdcExtension>),
+    // mut pin_x: AdcPin<impl embedded_hal_02::adc::Channel<ADCI, ID = u8>, )>
+{
+    let mut pin_value_y: u16 = nb::block(adc1.read_oneshot(&mut adc1_pin)).unwrap();
+
 
     loop {
         // replace with actual reading
@@ -35,7 +38,7 @@ pub async fn update_controller_state(update_controller_state: &'static AtomicF32
 
         // lock mutex (CONTROLLER_STATE) and update
         {
-            let mut state: embassy_sync::mutex::MutexGuard<CriticalSectionRawMutex, EsdaControllerStruct> = CONTROLLER_STATE.lock().await;
+            let mut state: MutexGuard<CriticalSectionRawMutex, EsdaControllerStruct> = CONTROLLER_STATE.lock().await;
             let mut changed = false;
 
             if state.button_state != new_button_state {
@@ -54,6 +57,16 @@ pub async fn update_controller_state(update_controller_state: &'static AtomicF32
 
         // wait for 1 sec
         Timer::after(Duration::from_secs(1)).await;        
+    }
+}
+
+
+pub async fn update_controller<P>(
+    mut x_pin: AdcPin<P, ADC1>,
+    mut y_pin: AdcPin<P, ADC2>,
+){
+    loop{
+
     }
 }
 
