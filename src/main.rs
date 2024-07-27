@@ -75,14 +75,17 @@ async fn main(spawner: Spawner) {
 
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
     // Initialise analog read pins
-    let read_y_in: GpioPin<35> = io.pins.gpio35; // y-axis
-    let read_x_in: GpioPin<34> = io.pins.gpio34; // x-axis
+    let read_y_in: GpioPin<34> = io.pins.gpio34; // y-axis
+    let read_x_in: GpioPin<35> = io.pins.gpio35; // x-axis
 
     // Create ADC instances
     let mut adc_config_x = AdcConfig::new();
     
     let mut adc_pin_x = adc_config_x.enable_pin(read_x_in, Attenuation::Attenuation11dB);
     let mut adc_x = Adc::new(peripherals.ADC1, adc_config_x);
+
+    
+
     let mut adc_config_y = AdcConfig::new();
     let mut adc_pin_y = adc_config_y.enable_pin(read_y_in, Attenuation::Attenuation11dB);
     let mut adc_y = Adc::new(peripherals.ADC2, adc_config_y);

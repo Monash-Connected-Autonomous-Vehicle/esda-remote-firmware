@@ -29,18 +29,8 @@ pub async fn wireless_transmitter(
 
         println!("CONtroller 1 data_bytes_1: {:?}", data_bytes_1);
 
-        // wait for controller_transmit_signal   
-        // controller_transmit_signal.wait().await;
-
-        // latest controller data
-        let controller_data = get_controller_state().await;
-
-        let data_bytes = controller_data.to_bytes(); // convert to bytes array
-
-        println!("DAWAWDDAW: {:?}", controller_data);
-
         // broadcast (send to all esp32) struct through esp now
-        match esp_now.send(&BROADCAST_ADDRESS, &data_bytes) {
+        match esp_now.send(&BROADCAST_ADDRESS, &data_bytes_1) {
             Ok(_) => println!("Data sent successfully: {:?}", data_bytes_1),
             Err(e) => println!("Failed to send data: {:?}", e),
         }

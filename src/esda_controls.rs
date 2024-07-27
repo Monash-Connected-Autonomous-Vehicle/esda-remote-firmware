@@ -4,12 +4,12 @@ use embassy_executor::task;
 use embassy_sync::{blocking_mutex::{raw::CriticalSectionRawMutex, NoopMutex, raw::NoopRawMutex}, mutex::Mutex, signal::Signal};
 use embassy_time::{Duration, Timer};
 use esp_hal::{
-    analog::adc::{Adc, AdcConfig, AdcPin, Attenuation}, clock::ClockControl, delay::Delay, gpio::{GpioPin, Io}, i2s::RegisterAccess, peripherals::{self, Peripherals, ADC1, ADC2}, prelude::*, rng::Rng, system::SystemControl, timer::PeriodicTimer
+    analog::adc::{Adc, AdcConfig, AdcPin, Attenuation}, clock::ClockControl, delay::Delay, gpio::{GpioPin, Io, InputPin, Pull}, i2s::RegisterAccess, peripherals::{self, Peripherals, ADC1, ADC2}, prelude::*, rng::Rng, system::SystemControl, timer::PeriodicTimer
 };
 use embassy_sync::mutex::MutexGuard;
 use esp_println::println;
 use crate::{peripheral_extensions::AdcExtension, esda_interface::EsdaControllerStruct};
-use esp_hal::gpio::InputPin;
+use esp_hal::gpio;
 
 // protect access to EsdaControllerStruct
 static CONTROLLER_STATE: Mutex<CriticalSectionRawMutex, EsdaControllerStruct> = Mutex::new(EsdaControllerStruct {
@@ -26,8 +26,8 @@ pub static CONTROLLER_SIGNAL: Signal<CriticalSectionRawMutex, ()> = Signal::new(
 pub static CONTROLLER_STATE_SIGNAL: Signal<CriticalSectionRawMutex, EsdaControllerStruct> = Signal::new();
 
 
-const X_PIN: u8 = 34;
-const Y_PIN: u8 = 35;
+const X_PIN: u8 = 35;
+const Y_PIN: u8 = 34;
 
 #[task]
 pub async fn update_controller_state(
@@ -37,9 +37,10 @@ pub async fn update_controller_state(
     mut adc_y: Adc<'static, esp_hal::peripherals::ADC2>,
     mut adc_pin_y: AdcPin<GpioPin<Y_PIN>, esp_hal::peripherals::ADC2>,
     // mut adc_config_y: AdcConfig<esp_hal::peripherals::ADC2>,
+    // mut gpio: Gpio<'static>,
+    
 )   
 {
-    
     loop {
         // replace with actual reading
         
@@ -56,12 +57,23 @@ pub async fn update_controller_state(
             let mut state: MutexGuard<CriticalSectionRawMutex, EsdaControllerStruct> = CONTROLLER_STATE.lock().await;
             let mut changed = false;
 
-            println!("y-value reading = {}, x-value reading = {}", adc_value_y, adc_value_x);
-            // print!("x-value reading = {}", adc_value_x);
-            CONTROLLER_SIGNAL.signal(());
-            // if state.x_value_pack = != pin_value_x{
+            let mut adc_value_x_8_bit: u8 = adc_value_x as u8; // Truncates if necessary
+            let mut adc_value_y_8_bit: u8 = adc_value_y as u8; // Truncates if necessary
 
-            // }
+            println!("y-value reading = {}, x-value reading = {}", adc_value_y_8_bit, adc_value_x_8_bit);
+
+            // Signalling for the controller
+            
+            if state.y_value_pack != adc_value_y_8_bit {
+                state.y_value_pack = adc_value_y_8_bit;
+                changed = true;
+            }
+            
+            if state.x_value_pack != adc_value_x_8_bit {
+                state.x_value_pack = adc_value_x_8_bit;
+                changed = true;
+            }
+            
             if state.button_state != new_button_state {
                 state.set_button_state(new_button_state);
                 changed = true;
@@ -85,14 +97,6 @@ pub async fn update_controller_state(
 }
 
 
-pub async fn update_controller<P>(
-    mut x_pin: AdcPin<P, ADC1>,
-    mut y_pin: AdcPin<P, ADC2>,
-){
-    loop{
-
-    }
-}
 
 // for wireless_transmission task
 pub async fn get_controller_state() -> EsdaControllerStruct {
