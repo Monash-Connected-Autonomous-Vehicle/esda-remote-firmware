@@ -9,11 +9,14 @@
 #![no_std]
 #![no_main]
 
+// use core::intrinsics::mir::Static;
+
 use embassy_executor::Spawner;
+use embassy_sync::{blocking_mutex::{raw::NoopRawMutex, NoopMutex}, signal::{self, Signal}};
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::{
-    analog::adc::{Adc, AdcConfig, Attenuation},
+    analog::adc::{Adc, AdcConfig, AdcPin, Attenuation},
     clock::ClockControl, 
     peripherals::Peripherals,
     prelude::*, 
@@ -25,6 +28,7 @@ use esp_hal::{
 };
 use esp_println::println;
 use esp_wifi::{initialize, EspWifiInitFor};
+use static_cell::StaticCell;
 
 /// Module containing interface types for communicating with controller (via esp-now) and the computer (via serial)
 mod esda_interface;
@@ -62,6 +66,9 @@ async fn main(spawner: Spawner) {
 
     println!("Beginning Asterius Firmware Initialisation...");
     println!("Initialising Runtime...");
+
+    
+
     let peripherals = Peripherals::take();
     let system = SystemControl::new(peripherals.SYSTEM);
     let clocks = ClockControl::boot_defaults(system.clock_control).freeze();
@@ -73,6 +80,7 @@ async fn main(spawner: Spawner) {
 
     // Create ADC instances
     let mut adc_config_x = AdcConfig::new();
+    
     let mut adc_pin_x = adc_config_x.enable_pin(read_x_in, Attenuation::Attenuation11dB);
     let mut adc_x = Adc::new(peripherals.ADC1, adc_config_x);
     let mut adc_config_y = AdcConfig::new();
@@ -86,6 +94,12 @@ async fn main(spawner: Spawner) {
     let timers = [timer0];
     let timers = mk_static!([OneShotTimer<ErasedTimer>; 1], timers);
     esp_hal_embassy::init(&clocks, timers);
+
+    // Defining a controller signal
+    static CONTROLLER_COMMAND_SIGNAL: StaticCell<
+        Signal<NoopRawMutex, (f32,f32)>,
+    > = StaticCell::new();
+    let controller_command_signal: &'static Signal<NoopRawMutex, (f32, f32)> = &*CONTROLLER_COMMAND_SIGNAL.init(Signal::new());
 
     println!("Starting esp-now Initialisation");
     let timer = PeriodicTimer::new(
@@ -106,15 +120,12 @@ async fn main(spawner: Spawner) {
     let wifi = peripherals.WIFI;
     let mut esp_now = esp_wifi::esp_now::EspNow::new(&init, wifi).unwrap();
 
-
     // Task to update the x and y values
-    spawner.spawn(esda_controls::update_controller_state(adc_x, adc_pin_x,adc_y, adc_pin_y)).unwrap();
+    spawner.spawn(esda_controls::update_controller_state(adc_x, adc_pin_x, adc_y, adc_pin_y)).unwrap();
 
 
     // Task to transmit the ESDA messages
-    spawner.spawn(esda_wireless::wireless_transmitter(esp_now)).unwrap(); 
-
-    
+    spawner.spawn(esda_wireless::wireless_transmitter(esp_now, controller_command_signal)).unwrap(); 
 
     // Occupy the main thread to avoid tripping the watchdog
     loop {

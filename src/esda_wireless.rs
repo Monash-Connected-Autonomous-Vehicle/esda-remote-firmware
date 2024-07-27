@@ -8,7 +8,7 @@ use esp_wifi::esp_now::{self, EspNow, PeerInfo, BROADCAST_ADDRESS};
 use smoltcp::wire::{DhcpMessageType, Icmpv4Message};
 
 // use crate::{esda_controls::get_controller_state, esda_interface::EsdaControllerStruct};
-use crate::esda_controls::{get_controller_state, CONTROLLER_SIGNAL};
+use crate::esda_controls::{CONTROLLER_SIGNAL, get_controller_state, CONTROLLER_STATE_SIGNAL};
 
 
 #[task]
@@ -20,17 +20,28 @@ pub async fn wireless_transmitter(
         // Either loop with a timer and send all the data or add channels (not signals) to the parameters which are fired by other tasks when they detect changes to the controls
         // I like the second option better :)
         
-        // wait for signal 
+        // Wait for CONTROLLER_SIGNAL
         CONTROLLER_SIGNAL.wait().await;
+        println!("Waiting for CONTROLLER_SIGNAL");
+        let controller_data_1 = CONTROLLER_STATE_SIGNAL.wait().await;
+        let data_bytes_1 = controller_data_1.to_bytes();
+
+
+        println!("CONtroller 1 data_bytes_1: {:?}", data_bytes_1);
+
+        // wait for controller_transmit_signal   
+        // controller_transmit_signal.wait().await;
 
         // latest controller data
         let controller_data = get_controller_state().await;
 
         let data_bytes = controller_data.to_bytes(); // convert to bytes array
 
+        println!("DAWAWDDAW: {:?}", controller_data);
+
         // broadcast (send to all esp32) struct through esp now
         match esp_now.send(&BROADCAST_ADDRESS, &data_bytes) {
-            Ok(_) => println!("Data sent successfully: {:?}", data_bytes),
+            Ok(_) => println!("Data sent successfully: {:?}", data_bytes_1),
             Err(e) => println!("Failed to send data: {:?}", e),
         }
 

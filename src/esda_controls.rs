@@ -1,12 +1,13 @@
 use core::{pin, sync::atomic::AtomicU32};
 
 use embassy_executor::task;
-use embassy_sync::{blocking_mutex::{raw::CriticalSectionRawMutex, NoopMutex}, mutex::Mutex, signal::Signal};
+use embassy_sync::{blocking_mutex::{raw::CriticalSectionRawMutex, NoopMutex, raw::NoopRawMutex}, mutex::Mutex, signal::Signal};
 use embassy_time::{Duration, Timer};
 use esp_hal::{
     analog::adc::{Adc, AdcConfig, AdcPin, Attenuation}, clock::ClockControl, delay::Delay, gpio::{GpioPin, Io}, i2s::RegisterAccess, peripherals::{self, Peripherals, ADC1, ADC2}, prelude::*, rng::Rng, system::SystemControl, timer::PeriodicTimer
 };
 use embassy_sync::mutex::MutexGuard;
+use esp_println::println;
 use crate::{peripheral_extensions::AdcExtension, esda_interface::EsdaControllerStruct};
 use esp_hal::gpio::InputPin;
 
@@ -21,6 +22,10 @@ static CONTROLLER_STATE: Mutex<CriticalSectionRawMutex, EsdaControllerStruct> = 
 // define a static signal to notify wireless transmission task
 pub static CONTROLLER_SIGNAL: Signal<CriticalSectionRawMutex, ()> = Signal::new();
 
+// Define a signal to carry the updated controller state
+pub static CONTROLLER_STATE_SIGNAL: Signal<CriticalSectionRawMutex, EsdaControllerStruct> = Signal::new();
+
+
 const X_PIN: u8 = 34;
 const Y_PIN: u8 = 35;
 
@@ -28,31 +33,32 @@ const Y_PIN: u8 = 35;
 pub async fn update_controller_state(
     mut adc_x: Adc<'static, esp_hal::peripherals::ADC1>,
     mut adc_pin_x: AdcPin<GpioPin<X_PIN>, esp_hal::peripherals::ADC1>,
+    // mut adc_config_x: AdcConfig<esp_hal::peripherals::ADC1>,
     mut adc_y: Adc<'static, esp_hal::peripherals::ADC2>,
     mut adc_pin_y: AdcPin<GpioPin<Y_PIN>, esp_hal::peripherals::ADC2>,
+    // mut adc_config_y: AdcConfig<esp_hal::peripherals::ADC2>,
 )   
 {
-    // let mut adc_value_x: u16 = nb::block!(adc_x.read_oneshot(&mut adc_pin_x)).unwrap();
-    // let mut pin_value_y: u16 = nb::block!(adc_y.read_oneshot(&mut adc_pin_y)).unwrap();
-
+    
     loop {
         // replace with actual reading
         
         let new_button_state: u8 = 1;
         let new_tog_switch_val: u8 = 1;
         
-
-
         // lock mutex (CONTROLLER_STATE) and update
         {   
             // Constantly reads the 
             let mut adc_value_x: u16 = nb::block!(adc_x.read_oneshot(&mut adc_pin_x)).unwrap();
-            let mut pin_value_x: f32 = adc_value_x as f32;
+            // let mut pin_value_x: f32 = adc_value_x as f32;
             let mut adc_value_y: u16 = nb::block!(adc_y.read_oneshot(&mut adc_pin_y)).unwrap();
-            let mut pin_value_y: f32 = adc_value_y as f32;
+            // let mut pin_value_y: f32 = adc_value_y as f32;
             let mut state: MutexGuard<CriticalSectionRawMutex, EsdaControllerStruct> = CONTROLLER_STATE.lock().await;
             let mut changed = false;
-            
+
+            println!("y-value reading = {}, x-value reading = {}", adc_value_y, adc_value_x);
+            // print!("x-value reading = {}", adc_value_x);
+            CONTROLLER_SIGNAL.signal(());
             // if state.x_value_pack = != pin_value_x{
 
             // }
@@ -67,9 +73,12 @@ pub async fn update_controller_state(
             // signal that struct fields have changed
             if changed {
                 CONTROLLER_SIGNAL.signal(());
+                CONTROLLER_STATE_SIGNAL.signal(state.clone());
+            } else {
+                println!("No change being detected");
             }
         }
-
+        
         // wait for 1 sec
         Timer::after(Duration::from_secs(1)).await;        
     }
