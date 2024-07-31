@@ -1,7 +1,3 @@
-// MCAV - Asterius MCU Firmware - esda_interface
-//
-// Authors: BMCG0011
-
 #[repr(u32)]
 /// Convenient wrapper around the u32 used to denote the 'topic' being described by a control message
 #[derive(Clone, Copy, Debug)]
@@ -19,7 +15,7 @@ pub enum ESDAMessageID {
     SetAutonomousMode = 9,
 }
 
-/// The size of a single [ESDAMessage] in bytes
+/// The size of a single message in bytes
 pub const MESSAGE_SIZE: usize = 8;
 
 /// Struct wrapper around the u32 used to denote the 'topic' being described by a control message
@@ -27,6 +23,14 @@ pub const MESSAGE_SIZE: usize = 8;
 pub struct ESDAMessage {
     pub id: ESDAMessageID,
     pub data: f32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct EsdaControllerStruct {
+    pub x_value_pack: f32,
+    pub y_value_pack: f32,
+    pub button_state: bool,
+    pub tog_switch_val: bool,
 }
 
 impl ESDAMessage {
@@ -39,7 +43,7 @@ impl ESDAMessage {
 
         // Convert the first four bytes of the slice into a u32
         let mut id: [u8; 4] = [0; 4];
-        id.copy_from_slice(&bytes[0..=3]);
+        id.copy_from_slice(&bytes[0..3]);
         let id: u32 = u32::from_le_bytes(id);
 
         let id: ESDAMessageID = match id {
@@ -60,7 +64,7 @@ impl ESDAMessage {
 
         // Store the last four bytes of the message in an array
         let mut value: [u8; 4] = [0; 4];
-        value.copy_from_slice(&bytes[4..=7]);
+        value.copy_from_slice(&bytes[4..7]);
         // Convert the last four bytes
         let value: f32 = f32::from_le_bytes(value);
 
@@ -77,7 +81,7 @@ impl ESDAMessage {
 
         // Convert the first four bytes of the slice into a u32
         let mut id: [u8; 4] = [0; 4];
-        id.copy_from_slice(&bytes[0..=3]);
+        id.copy_from_slice(&bytes[0..3]);
         let id: u32 = u32::from_be_bytes(id);
 
         let id: ESDAMessageID = match id {
@@ -98,7 +102,7 @@ impl ESDAMessage {
 
         // Store the last four bytes of the message in an array
         let mut value: [u8; 4] = [0; 4];
-        value.copy_from_slice(&bytes[4..=7]);
+        value.copy_from_slice(&bytes[4..7]);
         // Convert the last four bytes
         let value: f32 = f32::from_be_bytes(value);
 
@@ -114,11 +118,11 @@ impl ESDAMessage {
         // NOTE: DOUBLE CHECK CORRECT ENDIANNESS
         let id_quartet: [u8; 4] = (self.id as u32).to_le_bytes();
         // Copy the bytes to the output buffer
-        byte_form[0..=3].copy_from_slice(&id_quartet);
+        byte_form[0..3].copy_from_slice(&id_quartet);
 
         // Copy the bytes to the output buffer
         let value_quartet: [u8; 4] = self.data.to_le_bytes();
-        byte_form[4..=7].copy_from_slice(&value_quartet);
+        byte_form[4..7].copy_from_slice(&value_quartet);
 
         byte_form
     }
@@ -131,12 +135,36 @@ impl ESDAMessage {
         // NOTE: DOUBLE CHECK CORRECT ENDIANNESS
         let id_quartet: [u8; 4] = (self.id as u32).to_be_bytes();
         // Copy the bytes to the output buffer
-        byte_form[0..=3].copy_from_slice(&id_quartet);
+        byte_form[0..3].copy_from_slice(&id_quartet);
 
         // Copy the bytes to the output buffer
         let value_quartet: [u8; 4] = self.data.to_be_bytes();
-        byte_form[4..=7].copy_from_slice(&value_quartet);
+        byte_form[4..7].copy_from_slice(&value_quartet);
 
         byte_form
+    }
+}
+
+// implement serialization methods
+impl EsdaControllerStruct {
+    // pub fn to_bytes(&self) -> [u8; 4] { // return byte array of 4 ( a byte is uint8)
+    //     [self.x_value_pack, self.y_value_pack, self.button_state, self.tog_switch_val]
+    // }
+
+    // pub fn from_bytes(bytes: [u8; 4]) -> Self { // returns an  EsdaControllerStruct
+    //     EsdaControllerStruct {
+    //         x_value_pack: bytes[0],
+    //         y_value_pack: bytes[1],
+    //         button_state: bytes[2],
+    //         tog_switch_val: bytes[3],
+    //     }
+    // }
+
+    pub fn set_button_state(&mut self, state: bool) {
+        self.button_state = state;
+    }
+
+    pub fn set_tog_switch_val(&mut self, value: bool) {
+        self.tog_switch_val = value;
     }
 }
