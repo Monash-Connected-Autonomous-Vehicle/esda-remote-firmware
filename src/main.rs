@@ -97,7 +97,7 @@ async fn main(spawner: Spawner) {
     let current_e_stop: u8;
 
 
-    let button_pin = io.pins.gpio9;
+    let button_pin = io.pins.gpio23;
     let estop_pin = io.pins.gpio5;
 
 

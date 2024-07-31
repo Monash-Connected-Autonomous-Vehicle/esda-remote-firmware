@@ -44,7 +44,7 @@ pub async fn update_controller_state(
     mut adc_pin_x: AdcPin<GpioPin<X_PIN>, esp_hal::peripherals::ADC1>,
     mut adc_y: Adc<'static, esp_hal::peripherals::ADC2>,
     mut adc_pin_y: AdcPin<GpioPin<Y_PIN>, esp_hal::peripherals::ADC2>,
-    mut button_pin: gpio::Gpio9,
+    mut button_pin: gpio::Gpio23,
     mut estop_pin: gpio::Gpio5,
 )   
 {
@@ -52,12 +52,22 @@ pub async fn update_controller_state(
         // replace with actual reading
         
         
-
-        let new_button_state: u8 = 1;
-        let new_tog_switch_val: u8 = 1;
+        // the actual messages button and toggle that will change and are sent via ESDA messages
+        let mut new_button_state: u8 = 0;
+        let mut new_tog_switch_val: u8 = 0;
         
+        // button_pin.is_set_low();
+
         // lock mutex (CONTROLLER_STATE) and update
         {   
+
+            
+
+            let button_pressed = button_pin.is_low();
+
+            
+
+
             // Constantly reads the 
             let mut adc_value_x: u16 = nb::block!(adc_x.read_oneshot(&mut adc_pin_x)).unwrap();
             // let mut pin_value_x: f32 = adc_value_x as f32;
@@ -82,11 +92,16 @@ pub async fn update_controller_state(
                 state.x_value_pack = adc_value_x_8_bit;
                 changed = true;
             }
-            
-            if state.button_state != new_button_state {
+            if button_pressed {
+                new_button_state = new_button_state.wrapping_add(1);
                 state.set_button_state(new_button_state);
                 changed = true;
+                esp_println::println!("Button pressed! Counter: {}\n", new_button_state);
             }
+            // if state.button_state != new_button_state {
+            //     state.set_button_state(new_button_state);
+            //     changed = true;
+            // }
             if state.tog_switch_val != new_tog_switch_val {
                 state.set_button_state(new_tog_switch_val);
                 changed = true;
