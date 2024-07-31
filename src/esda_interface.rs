@@ -1,3 +1,7 @@
+// MCAV - Asterius MCU Firmware - esda_interface
+//
+// Authors: BMCG0011
+
 #[repr(u32)]
 /// Convenient wrapper around the u32 used to denote the 'topic' being described by a control message
 #[derive(Clone, Copy, Debug)]
@@ -15,7 +19,7 @@ pub enum ESDAMessageID {
     SetAutonomousMode = 9,
 }
 
-/// The size of a single message in bytes
+/// The size of a single [ESDAMessage] in bytes
 pub const MESSAGE_SIZE: usize = 8;
 
 /// Struct wrapper around the u32 used to denote the 'topic' being described by a control message
@@ -43,7 +47,7 @@ impl ESDAMessage {
 
         // Convert the first four bytes of the slice into a u32
         let mut id: [u8; 4] = [0; 4];
-        id.copy_from_slice(&bytes[0..3]);
+        id.copy_from_slice(&bytes[0..=3]);
         let id: u32 = u32::from_le_bytes(id);
 
         let id: ESDAMessageID = match id {
@@ -64,7 +68,7 @@ impl ESDAMessage {
 
         // Store the last four bytes of the message in an array
         let mut value: [u8; 4] = [0; 4];
-        value.copy_from_slice(&bytes[4..7]);
+        value.copy_from_slice(&bytes[4..=7]);
         // Convert the last four bytes
         let value: f32 = f32::from_le_bytes(value);
 
@@ -81,7 +85,7 @@ impl ESDAMessage {
 
         // Convert the first four bytes of the slice into a u32
         let mut id: [u8; 4] = [0; 4];
-        id.copy_from_slice(&bytes[0..3]);
+        id.copy_from_slice(&bytes[0..=3]);
         let id: u32 = u32::from_be_bytes(id);
 
         let id: ESDAMessageID = match id {
@@ -102,7 +106,7 @@ impl ESDAMessage {
 
         // Store the last four bytes of the message in an array
         let mut value: [u8; 4] = [0; 4];
-        value.copy_from_slice(&bytes[4..7]);
+        value.copy_from_slice(&bytes[4..=7]);
         // Convert the last four bytes
         let value: f32 = f32::from_be_bytes(value);
 
@@ -118,11 +122,11 @@ impl ESDAMessage {
         // NOTE: DOUBLE CHECK CORRECT ENDIANNESS
         let id_quartet: [u8; 4] = (self.id as u32).to_le_bytes();
         // Copy the bytes to the output buffer
-        byte_form[0..3].copy_from_slice(&id_quartet);
+        byte_form[0..=3].copy_from_slice(&id_quartet);
 
         // Copy the bytes to the output buffer
         let value_quartet: [u8; 4] = self.data.to_le_bytes();
-        byte_form[4..7].copy_from_slice(&value_quartet);
+        byte_form[4..=7].copy_from_slice(&value_quartet);
 
         byte_form
     }
@@ -135,11 +139,11 @@ impl ESDAMessage {
         // NOTE: DOUBLE CHECK CORRECT ENDIANNESS
         let id_quartet: [u8; 4] = (self.id as u32).to_be_bytes();
         // Copy the bytes to the output buffer
-        byte_form[0..3].copy_from_slice(&id_quartet);
+        byte_form[0..=3].copy_from_slice(&id_quartet);
 
         // Copy the bytes to the output buffer
         let value_quartet: [u8; 4] = self.data.to_be_bytes();
-        byte_form[4..7].copy_from_slice(&value_quartet);
+        byte_form[4..=7].copy_from_slice(&value_quartet);
 
         byte_form
     }
