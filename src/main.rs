@@ -11,20 +11,15 @@
 
 // use core::intrinsics::mir::Static;
 
+use core::cell::RefCell;
+
+use critical_section::Mutex;
 use embassy_executor::Spawner;
 use embassy_sync::{blocking_mutex::{raw::NoopRawMutex, NoopMutex}, signal::{self, Signal}};
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::{
-    analog::adc::{Adc, AdcConfig, AdcPin, Attenuation},
-    clock::ClockControl, 
-    peripherals::Peripherals,
-    prelude::*, 
-    rng::Rng, 
-    system::SystemControl, 
-    timer::{timg::TimerGroup, ErasedTimer, OneShotTimer, PeriodicTimer},
-    gpio::{GpioPin, Io},
-    delay::Delay,
+    analog::adc::{Adc, AdcConfig, AdcPin, Attenuation}, clock::ClockControl, delay::Delay, gpio::{self, Gpio9, GpioPin, Io, Pins, Pull, Input, Event, Level}, peripherals::Peripherals, prelude::*, rng::Rng, system::SystemControl, timer::{timg::TimerGroup, ErasedTimer, OneShotTimer, PeriodicTimer}
 };
 use esp_println::println;
 use esp_wifi::{initialize, EspWifiInitFor};
@@ -60,6 +55,10 @@ async fn run() {
     }
 }
 
+
+static BUTTON: Mutex<RefCell<Option<Input<gpio::Gpio0>>>> = Mutex::new(RefCell::new(None));
+
+
 #[main]
 async fn main(spawner: Spawner) {
     esp_println::logger::init_logger_from_env();
@@ -67,24 +66,42 @@ async fn main(spawner: Spawner) {
     println!("Beginning Asterius Firmware Initialisation...");
     println!("Initialising Runtime...");
 
-    
-
     let peripherals = Peripherals::take();
     let system = SystemControl::new(peripherals.SYSTEM);
     let clocks = ClockControl::boot_defaults(system.clock_control).freeze();
 
     let io = Io::new(peripherals.GPIO, peripherals.IO_MUX);
+
     // Initialise analog read pins
-    let read_y_in: GpioPin<34> = io.pins.gpio34; // y-axis
+    let read_y_in: GpioPin<34> = io.pins.gpio34; // y-axis  
     let read_x_in: GpioPin<35> = io.pins.gpio35; // x-axis
 
     // Create ADC instances
     let mut adc_config_x = AdcConfig::new();
-    
     let mut adc_pin_x = adc_config_x.enable_pin(read_x_in, Attenuation::Attenuation11dB);
     let mut adc_x = Adc::new(peripherals.ADC1, adc_config_x);
 
-    
+    // Initialise digital read pins
+    let button = io.pins.gpio0;
+    let mut button = Input::new(button, Pull::Up);
+
+    critical_section::with(|cs| {
+        button.listen(Event::FallingEdge);
+        BUTTON.borrow_ref_mut(cs).replace(button);
+    });
+
+    let button_counter: u8 = 0; // boolean which will let the car know if it's in autonomous mode or steering mode
+    let e_stop_counter: u8 = 0; // boolean which will let the car know if estop has been engaged
+
+    let current_button: u8;
+    let current_e_stop: u8;
+
+
+    let button_pin = io.pins.gpio9;
+    let estop_pin = io.pins.gpio5;
+
+
+
 
     let mut adc_config_y = AdcConfig::new();
     let mut adc_pin_y = adc_config_y.enable_pin(read_y_in, Attenuation::Attenuation11dB);
@@ -96,6 +113,7 @@ async fn main(spawner: Spawner) {
     let timer0 = OneShotTimer::new(timg0.timer0.into());
     let timers = [timer0];
     let timers = mk_static!([OneShotTimer<ErasedTimer>; 1], timers);
+
     esp_hal_embassy::init(&clocks, timers);
 
     // Defining a controller signal
@@ -122,14 +140,14 @@ async fn main(spawner: Spawner) {
 
     let wifi = peripherals.WIFI;
     let mut esp_now = esp_wifi::esp_now::EspNow::new(&init, wifi).unwrap();
-
+    
     // Task to update the x and y values
-    spawner.spawn(esda_controls::update_controller_state(adc_x, adc_pin_x, adc_y, adc_pin_y)).unwrap();
-
+    spawner.spawn(esda_controls::update_controller_state(adc_x, adc_pin_x, adc_y, adc_pin_y, button_pin, estop_pin)).unwrap();
 
     // Task to transmit the ESDA messages
     spawner.spawn(esda_wireless::wireless_transmitter(esp_now, controller_command_signal)).unwrap(); 
 
+    
     // Occupy the main thread to avoid tripping the watchdog
     loop {
         Timer::after(Duration::from_millis(5_000)).await;

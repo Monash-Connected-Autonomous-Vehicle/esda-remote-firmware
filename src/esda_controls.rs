@@ -29,21 +29,30 @@ pub static CONTROLLER_STATE_SIGNAL: Signal<CriticalSectionRawMutex, EsdaControll
 const X_PIN: u8 = 35;
 const Y_PIN: u8 = 34;
 
+#[embassy_executor::task]
+async fn run(button_state: &'static mut u8) {
+    loop {
+        // Print the current state of the button
+        esp_println::println!("Button state: {}", button_state);
+        Timer::after(Duration::from_millis(1_000)).await;
+    }
+}
+
 #[task]
 pub async fn update_controller_state(
     mut adc_x: Adc<'static, esp_hal::peripherals::ADC1>,
     mut adc_pin_x: AdcPin<GpioPin<X_PIN>, esp_hal::peripherals::ADC1>,
-    // mut adc_config_x: AdcConfig<esp_hal::peripherals::ADC1>,
     mut adc_y: Adc<'static, esp_hal::peripherals::ADC2>,
     mut adc_pin_y: AdcPin<GpioPin<Y_PIN>, esp_hal::peripherals::ADC2>,
-    // mut adc_config_y: AdcConfig<esp_hal::peripherals::ADC2>,
-    // mut gpio: Gpio<'static>,
-    
+    mut button_pin: gpio::Gpio9,
+    mut estop_pin: gpio::Gpio5,
 )   
 {
     loop {
         // replace with actual reading
         
+        
+
         let new_button_state: u8 = 1;
         let new_tog_switch_val: u8 = 1;
         
@@ -86,6 +95,7 @@ pub async fn update_controller_state(
             if changed {
                 CONTROLLER_SIGNAL.signal(());
                 CONTROLLER_STATE_SIGNAL.signal(state.clone());
+                // changed = false;
             } else {
                 println!("No change being detected");
             }
@@ -95,6 +105,7 @@ pub async fn update_controller_state(
         Timer::after(Duration::from_secs(1)).await;        
     }
 }
+
 
 
 
