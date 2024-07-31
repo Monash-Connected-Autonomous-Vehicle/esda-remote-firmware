@@ -19,6 +19,7 @@ use embassy_sync::{
 };
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
+use esp_hal::gpio::{Input, Pull};
 use esp_hal::{
     analog::adc::{Adc, AdcConfig, AdcPin, Attenuation},
     clock::ClockControl,
@@ -92,6 +93,14 @@ async fn main(spawner: Spawner) {
     let mut adc_pin_y = adc_config_y.enable_pin(read_y_in, Attenuation::Attenuation11dB);
     let mut adc_y = Adc::new(peripherals.ADC2, adc_config_y);
 
+    // Initialising digital read pins
+    let read_e_stop_in = io.pins.gpio9;
+    let read_auto_mode_in = io.pins.gpio10;
+
+    // Creating digital pin instances
+    let mut e_stop_pin = Input::new(read_e_stop_in, Pull::Up);
+    let mut auto_mode_pin = Input::new(read_auto_mode_in, Pull::Up);
+
     let delay = Delay::new(&clocks);
 
     let timg0 = TimerGroup::new(peripherals.TIMG0, &clocks, None);
@@ -138,6 +147,8 @@ async fn main(spawner: Spawner) {
             adc_y,
             adc_pin_y,
             &controller_state_channel,
+            e_stop_pin,
+            auto_mode_pin,
         ))
         .unwrap();
 

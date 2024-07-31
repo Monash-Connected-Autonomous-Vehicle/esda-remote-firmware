@@ -14,7 +14,7 @@ use esp_hal::{
     analog::adc::{Adc, AdcConfig, AdcPin, Attenuation},
     clock::ClockControl,
     delay::Delay,
-    gpio::{GpioPin, InputPin, Io, Pull},
+    gpio::{Event, Input, Level, GpioPin, InputPin, Io, Pull},
     i2s::RegisterAccess,
     peripherals::{self, Peripherals, ADC1, ADC2},
     prelude::*,
@@ -54,6 +54,8 @@ pub async fn update_controller_state(
     controller_state_channel: &'static Channel<NoopRawMutex, EsdaControllerStruct, 2>, // Might need to change this
                                                                                        // mut adc_config_y: AdcConfig<esp_hal::peripherals::ADC2>,
                                                                                        // mut gpio: Gpio<'static>,
+    mut digital_pin_estop: Input<'static, GpioPin<9>>,
+    mut digital_pin_auto: Input<'static, GpioPin<10>>,
 ) {
     loop {
         // replace with actual reading
@@ -63,7 +65,7 @@ pub async fn update_controller_state(
 
         // lock mutex (CONTROLLER_STATE) and update
         {
-            // Constantly reads the
+            // Constantly reads the analog values of a joystick
             let mut adc_value_x: u16 = nb::block!(adc_x.read_oneshot(&mut adc_pin_x)).unwrap();
             // let mut pin_value_x: f32 = adc_value_x as f32;
             let mut adc_value_y: u16 = nb::block!(adc_y.read_oneshot(&mut adc_pin_y)).unwrap();
@@ -81,6 +83,12 @@ pub async fn update_controller_state(
             );
 
             // Signalling for the controller
+
+
+            // critical_section::with(|cs|);
+
+
+
 
             if state.y_value_pack != adc_value_y_8_bit {
                 state.y_value_pack = adc_value_y_8_bit;
