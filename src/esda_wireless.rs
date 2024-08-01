@@ -99,12 +99,23 @@ pub async fn wireless_transmitter(
         let mut send_buffer: [u8; 24] = [0; 24];
         // Copy the velocities into it
         send_buffer[0..=7].copy_from_slice(&steer_message[0..=7]);
+        println!("Sending steering message: {:b}", u64::from_le_bytes(steer_message));
         send_buffer[8..=15].copy_from_slice(&throttle_message_left[0..=7]);
+        println!("Sending throttle message left: {:b}", u64::from_le_bytes(throttle_message_left));
         send_buffer[16..=23].copy_from_slice(&throttle_message_right[0..=7]);
+        println!("Sending throttle message right: {:b}", u64::from_le_bytes(throttle_message_right));
 
-        match esp_now.send(&BROADCAST_ADDRESS, &send_buffer) {
-            Ok(_) => println!("Data sent successfully: {:?}", &send_buffer),
-            Err(e) => println!("Failed to send data: {:?}", e),
+        match esp_now.send(&BROADCAST_ADDRESS, &steer_message) {
+            Ok(_) => println!("Steer Data sent successfully: {:?}", &steer_message),
+            Err(e) => println!("Failed to send steer data: {:?}", e),
+        }
+        match esp_now.send(&BROADCAST_ADDRESS, &throttle_message_left) {
+            Ok(_) => println!("Left throttle Data sent successfully: {:?}", &throttle_message_left),
+            Err(e) => println!("Failed to send left throttle data: {:?}", e),
+        }
+        match esp_now.send(&BROADCAST_ADDRESS, &throttle_message_right) {
+            Ok(_) => println!("right throttle Data sent successfully: {:?}", &throttle_message_right),
+            Err(e) => println!("Failed to send right throttle data: {:?}", e),
         }
     }
 }
