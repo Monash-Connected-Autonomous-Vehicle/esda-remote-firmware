@@ -94,8 +94,8 @@ async fn main(spawner: Spawner) {
     let mut adc_y = Adc::new(peripherals.ADC2, adc_config_y);
 
     // Initialising digital read pins
-    let read_e_stop_in = io.pins.gpio9;
-    let read_auto_mode_in = io.pins.gpio10;
+    let read_e_stop_in = io.pins.gpio10;
+    let read_auto_mode_in = io.pins.gpio32;
 
     // Creating digital pin instances
     let mut e_stop_pin = Input::new(read_e_stop_in, Pull::Up);

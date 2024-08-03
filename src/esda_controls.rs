@@ -54,14 +54,15 @@ pub async fn update_controller_state(
     controller_state_channel: &'static Channel<NoopRawMutex, EsdaControllerStruct, 2>, // Might need to change this
                                                                                        // mut adc_config_y: AdcConfig<esp_hal::peripherals::ADC2>,
                                                                                        // mut gpio: Gpio<'static>,
-    mut digital_pin_estop: Input<'static, GpioPin<9>>,
-    mut digital_pin_auto: Input<'static, GpioPin<10>>,
+    mut digital_pin_estop: Input<'static, GpioPin<10>>,
+    mut digital_pin_auto: Input<'static, GpioPin<32>>,
 ) {
+    let mut cntr = 0;
     loop {
         // replace with actual reading
 
-        let new_button_state: bool = true;
-        let new_tog_switch_val: bool = false;
+        let mut new_button_state: bool = false; // E-Stop button starts off as false. After 3 presses, it becomes true
+        let mut new_tog_switch_val: bool = false;
 
         // lock mutex (CONTROLLER_STATE) and update
         {
@@ -78,17 +79,20 @@ pub async fn update_controller_state(
             let mut adc_value_y_8_bit = adc_value_y as f32; // Truncates if necessary
 
             println!(
-                "y-value reading = {}, x-value reading = {}",
+                "y-value reading = {}, x-value reading = {}\n",
                 adc_value_y_8_bit, adc_value_x_8_bit
             );
 
             // Signalling for the controller
 
 
-            // critical_section::with(|cs|);
-
-
-
+            let auto_pressed = digital_pin_auto.is_low();
+            println!("Autonomous bool: {}", auto_pressed);
+            
+            if auto_pressed {
+                cntr = cntr + 1;
+            }
+            println!("Counter value estop: {}\n", cntr);
 
             if state.y_value_pack != adc_value_y_8_bit {
                 state.y_value_pack = adc_value_y_8_bit;
@@ -100,8 +104,10 @@ pub async fn update_controller_state(
                 changed = true;
             }
 
-            if state.button_state != new_button_state {
+            if cntr == 3 { // This is for autonomous mode. 
                 state.set_button_state(new_button_state);
+                new_button_state = !new_button_state;
+                cntr = 0;
                 changed = true;
             }
             if state.tog_switch_val != new_tog_switch_val {
