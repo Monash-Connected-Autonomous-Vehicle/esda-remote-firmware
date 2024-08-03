@@ -136,3 +136,16 @@ fn map_analog_value(value: f32) -> f32 {
     }
     mapped_value
 }
+
+
+#[task]
+pub async fn wireless_receiver(
+    mut esp_now: EspNow<'static>,
+    controller_transmit_signal: &'static Signal<NoopRawMutex, (f32, f32)>, // Might need to change this
+    controller_state_channel: &'static Channel<NoopRawMutex, EsdaControllerStruct, 2>,
+){
+    loop{
+        let dataReceived = esp_now.receive_async().await;
+        
+    }
+}
