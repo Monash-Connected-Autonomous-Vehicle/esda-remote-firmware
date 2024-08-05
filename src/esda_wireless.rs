@@ -2,10 +2,11 @@ use core::f32::consts::E;
 
 use embassy_executor::task;
 use embassy_sync::channel::Channel;
+use embassy_sync::priority_channel::ReceiveFuture;
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, signal::Signal};
 use embassy_time::{Duration, Timer};
 use esp_println::{dbg, print, println};
-use esp_wifi::esp_now::{self, EspNow, PeerInfo, BROADCAST_ADDRESS};
+use esp_wifi::esp_now::{self, EspNow, PeerInfo, ReceivedData, BROADCAST_ADDRESS};
 use smoltcp::wire::{DhcpMessageType, Icmpv4Message};
 
 use crate::esda_interface::EsdaControllerStruct;
@@ -141,11 +142,18 @@ fn map_analog_value(value: f32) -> f32 {
 #[task]
 pub async fn wireless_receiver(
     mut esp_now: EspNow<'static>,
-    controller_transmit_signal: &'static Signal<NoopRawMutex, (f32, f32)>, // Might need to change this
-    controller_state_channel: &'static Channel<NoopRawMutex, EsdaControllerStruct, 2>,
-){
-    loop{
-        let dataReceived = esp_now.receive_async().await;
+    // controller_transmit_signal: &'static Signal<NoopRawMutex, (f32, f32)>, // Might need to change this
+    // controller_state_channel: &'static Channel<NoopRawMutex, EsdaControllerStruct, 2>,
+) {
+    loop {
+        let result = esp_now.receive_async().await;
+        let message = result.data;
+
+
+
         
+
+
+        println!("{:?}", result);
     }
 }

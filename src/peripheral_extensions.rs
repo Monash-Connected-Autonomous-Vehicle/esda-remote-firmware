@@ -2,6 +2,7 @@ use esp_hal::{
     analog::adc::{Adc, AdcChannel, AdcPin, RegisterAccess},
     peripheral::Peripheral,
     prelude::nb,
+    mcpwm::{operator::PwmPin, PwmPeripheral},
 };
 
 pub trait AdcExtension {

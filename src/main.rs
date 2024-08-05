@@ -161,6 +161,7 @@ async fn main(spawner: Spawner) {
         ))
         .unwrap();
 
+    
     // Occupy the main thread to avoid tripping the watchdog
     loop {
         Timer::after(Duration::from_millis(5_000)).await;
